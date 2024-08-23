@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Describe your task</title>
+        <link
+            rel="stylesheet"
+            href="{{ url_for('static', filename='styles.css') }}"
+        />
+    </head>
+    <body>
+        <div class="container">
+            <div class="card">
+                <div class="card-header">
+                    <h2>Describe your task</h2>
+                    <button class="close-btn">&times;</button>
+                </div>
+                <p class="description">
+                    Turn a task description into a high quality prompt. Include
+                    any required input data and output format, or try an
+                    example.
+                </p>
+                <div class="button-group">
+                    <button class="task-btn">
+                        <span class="emoji">✉️</span> Write me an email
+                    </button>
+                    <button class="task-btn">
+                        <span class="emoji">🛡️</span> Content moderation
+                    </button>
+                    <button class="task-btn">
+                        <span class="emoji">🔄</span> Translate code
+                    </button>
+                    <button class="task-btn">
+                        <span class="emoji">🛒</span> Recommend a product
+                    </button>
+                    <button class="task-btn">
+                        <span class="emoji">📄</span> Summarize a document
+                    </button>
+                </div>
+                <form id="taskForm">
+                    <textarea
+                        name="Enter your task description here..."
+                    ></textarea>
+                    <div class="model-selection">
+                        <label>
+                            <input
+                                type="radio"
+                                name="model"
+                                value="anthropic"
+                                checked
+                            />
+                            Use Anthropic API (Requires API Key)
+                        </label>
+                        <label>
+                            <input type="radio" name="model" value="local" />
+                            Use Local Model (Ollama)
+                        </label>
+                    </div>
+                    <p class="token-info">
+                        Prompt generation consumes a small number of tokens
+                    </p>
+                    <div class="action-buttons">
+                        <button type="button" class="cancel-btn">Cancel</button>
+                        <button type="submit" class="generate-btn">
+                            Generate Prompt
+                        </button>
+                    </div>
+                </form>
+                <div id="loading">
+                    <div class="spinner"></div>
+                    <p>Generating prompt...</p>
+                </div>
+                <div id="result" style="display: none">
+                    <h3>Generated Prompt:</h3>
+                    <pre id="generated-prompt"></pre>
+                    <button class="copy-btn" onclick="copyToClipboard()">
+                        Copy to Clipboard
+                    </button>
+                </div>
+            </div>
+        </div>
+        <script>
+            document.addEventListener("DOMContentLoaded", function () {
+                var taskButtons = document.querySelectorAll(".task-btn");
+                var taskTextarea = document.querySelector(
+                    "textarea[name='Enter your task description here...']",
+                );
+
+                taskButtons.forEach(function (button) {
+                    button.addEventListener("click", function () {
+                        var taskText = this.textContent.trim();
+                        taskTextarea.value = taskText;
+                    });
+                });
+
+                document
+                    .getElementById("taskForm")
+                    .addEventListener("submit", function (event) {
+                        event.preventDefault();
+                        var taskDescription = taskTextarea.value;
+                        var selectedModel = document.querySelector(
+                            'input[name="model"]:checked',
+                        ).value;
+
+                        // Show loading indicator
+                        document.getElementById("loading").style.display =
+                            "flex";
+                        document.getElementById("result").style.display =
+                            "none";
+
+                        fetch("/generate_prompt", {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                            },
+                            body: JSON.stringify({
+                                task_description: taskDescription,
+                                model: selectedModel,
+                            }),
+                        })
+                            .then((response) => response.json())
+                            .then((data) => {
+                                // Hide loading indicator
+                                document.getElementById(
+                                    "loading",
+                                ).style.display = "none";
+
+                                if (data.error) {
+                                    alert("Error: " + data.error);
+                                } else {
+                                    document.getElementById(
+                                        "generated-prompt",
+                                    ).textContent = data.prompt;
+                                    document.getElementById(
+                                        "result",
+                                    ).style.display = "flex";
+                                }
+                            })
+                            .catch((error) => {
+                                // Hide loading indicator
+                                document.getElementById(
+                                    "loading",
+                                ).style.display = "none";
+
+                                console.error("Error:", error);
+                                alert(
+                                    "An error occurred while generating the prompt.",
+                                );
+                            });
+                    });
+
+                document
+                    .querySelectorAll(".close-btn, .cancel-btn")
+                    .forEach((button) => {
+                        button.addEventListener("click", function () {
+                            taskTextarea.value = "";
+                            document.getElementById("result").style.display =
+                                "none";
+                            document.getElementById("loading").style.display =
+                                "none";
+                        });
+                    });
+            });
+
+            function copyToClipboard() {
+                var promptText =
+                    document.getElementById("generated-prompt").textContent;
+                navigator.clipboard.writeText(promptText).then(
+                    function () {
+                        alert("Prompt copied to clipboard!");
+                    },
+                    function (err) {
+                        console.error("Could not copy text: ", err);
+                    },
+                );
+            }
+        </script>
+    </body>
+</html>
